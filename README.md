@@ -10,3 +10,7 @@ Starwing - 五子棋AI3.0版. 具有学习能力
 训练神经网络并生成自我对弈数据：generate_self_play_data 函数生成自我对弈数据，用于训练神经网络。train_neural_network 函数使用这些数据训练神经网络，优化策略和价值头的损失。
 
 人机对战测试：human_vs_ai 函数实现了与AI的对战，人类玩家和AI轮流进行落子。在每一轮中，AI使用MCTS搜索最佳落子策略，而人类玩家输入他们的落子位置。
+
+train.py文件：训练AI，参数自定义
+
+test.py文件：人机对战测试
