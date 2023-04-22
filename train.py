@@ -10,8 +10,8 @@ from src.MCTS import MCTS
 from src.NeuralNet import NeuralNet
 
 
-# 4. 训练神经网络并生成自我对弈数据
-def generate_self_play_data(net, mcts, num_games=100):
+# 训练神经网络并生成自我对弈数据
+def generate_self_play_data(net, mcts, num_games=50):
     self_play_data = []
 
     for game in range(num_games):
@@ -22,6 +22,7 @@ def generate_self_play_data(net, mcts, num_games=100):
 
         while not board.is_win() and not board.is_full():
             move = mcts.search(board)
+            print(f"Game {game + 1}/{num_games} - move: {move}")
             board_state = mcts.board_to_tensor(board)
             game_data.append((board_state, move))
             board.make_move(move)
@@ -34,7 +35,7 @@ def generate_self_play_data(net, mcts, num_games=100):
     return self_play_data
 
 
-def train_neural_network(net, self_play_data, batch_size=32, learning_rate=0.01, epochs=10):
+def train_neural_network(net, self_play_data, batch_size=32, learning_rate=0.01, epochs=20):
     print(self_play_data)
     optimizer = optim.Adam(net.parameters(), lr=learning_rate)
     loss_fn = nn.MSELoss()
@@ -85,37 +86,6 @@ def load_model(file_path="model.pth"):
     return net
 
 
-# 5. 人机对战测试
-def human_vs_ai(net, mcts):
-    board = Board()
-    player = random.choice([1, 2])
-    print(f"Human player is {player}, AI player is {3 - player}")
-
-    while not board.is_win() and not board.is_full():
-        if board.current_player == player:
-            move = None
-            while move is None:
-                try:
-                    row, col = map(int, input("Enter your move (row, col): ").split())
-                    if 0 <= row < 15 and 0 <= col < 15 and board.board[row][col] == 0:
-                        move = (row, col)
-                    else:
-                        print("Invalid move. Please try again.")
-                except ValueError:
-                    print("Invalid input. Please try again.")
-        else:
-            move = mcts.search(board)
-            print(f"AI move: {move}")
-
-        board.make_move(move)
-        print(board.board)
-
-    if board.is_win():
-        print(f"Player {board.current_player} wins!")
-    else:
-        print("It's a draw!")
-
-
 def main():
     # 初始化神经网络，MCTS
 
@@ -126,7 +96,7 @@ def main():
         net = NeuralNet()
 
     mcts = MCTS(net)
-    iterations = 10
+    iterations = 20
     for iteration in range(iterations):
         # 显示每次迭代的进度
         print(f"Iteration {iteration + 1}/{iterations}")
@@ -136,7 +106,8 @@ def main():
         train_neural_network(net, self_play_data)
 
         # 保存训练好的模型
-    save_model(net)
+        # 改动-每跑一轮就保存一次
+        save_model(net)
 
 
 if __name__ == "__main__":
