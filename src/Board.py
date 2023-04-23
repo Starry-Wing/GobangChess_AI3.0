@@ -13,6 +13,11 @@ class Board:
             return True
         return False
 
+    def random_move(self):
+        valid_moves = np.argwhere(self.board == 0)
+        random_move = valid_moves[np.random.choice(len(valid_moves))]
+        return tuple(random_move)
+
     def is_win(self):
         for row in range(15):
             for col in range(15):

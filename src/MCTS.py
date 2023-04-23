@@ -1,6 +1,9 @@
 import numpy as np
 import torch
 
+# 运算设备
+device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+
 # 使用Monte Carlo树搜索 (MCTS) 搜索策略
 class TreeNode:
     def __init__(self, parent, prior):
@@ -51,8 +54,14 @@ class TreeNode:
         self.visits += 1
 
 
+# net：神经网络对象，用于估计给定棋盘状态下的策略（走子概率）和价值（预测的结果）。这个神经网络对象是从NeuralNet类创建的。
+#
+# c_puct：默认值为1.0，是一个控制搜索过程中探索与利用平衡的超参数。c_puct越大，MCTS越注重探索未知的走子，越小则更倾向于重复访问高价值的走子。这个参数在MCTS树搜索过程中的select方法中被用来计算UCB（Upper Confidence Bound）值，进而影响选择哪一个子节点。
+#
+# n_simulations：默认值为100，表示在搜索过程中要进行的模拟次数。每一次模拟都从根节点开始，沿着树进行选择、扩展、模拟和回传步骤，直到达到终止条件。模拟次数越多，MCTS能够更充分地搜索可能的走子，但计算量也会相应增加。
+
 class MCTS:
-    def __init__(self, net, c_puct=1.0, n_simulations=100):
+    def __init__(self, net, c_puct=1.2, n_simulations=80):
         self.net = net
         self.c_puct = c_puct
         self.n_simulations = n_simulations
@@ -68,11 +77,11 @@ class MCTS:
                 action, node = node.select(self.c_puct)
                 temp_board.make_move(action)
 
-            board_state = self.board_to_tensor(temp_board)
+            board_state = torch.from_numpy(self.board_to_tensor(temp_board)).float().unsqueeze(0).to(device)
             with torch.no_grad():
-                policy, value = self.net(torch.from_numpy(board_state).float().unsqueeze(0))
+                policy, value = self.net(board_state)
 
-            policy = policy.squeeze(0).view(15, 15).numpy()
+            policy = policy.squeeze(0).view(15, 15).cpu().numpy()
             valid_moves = (temp_board.board == 0)
             prior_probs = policy * valid_moves
             prior_probs /= np.sum(prior_probs)

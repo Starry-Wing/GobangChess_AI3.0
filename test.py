@@ -6,6 +6,9 @@ from src.Board import Board
 from src.MCTS import MCTS
 from src.NeuralNet import NeuralNet
 
+# 运算设备
+device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+
 
 def load_model(file_path="model.pth"):
     net = NeuralNet()
@@ -53,6 +56,7 @@ def main():
     # 与AI对战
     if os.path.exists("model.pth"):
         net = load_model()
+        net.to(device)
         mcts = MCTS(net)
         while True:
             human_vs_ai(net, mcts)

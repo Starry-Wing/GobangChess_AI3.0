@@ -9,9 +9,11 @@ from src.Board import Board
 from src.MCTS import MCTS
 from src.NeuralNet import NeuralNet
 
+# 运算设备
+device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
 # 训练神经网络并生成自我对弈数据
-def generate_self_play_data(net, mcts, num_games=50):
+def generate_self_play_data(net, mcts, num_games=100):
     self_play_data = []
 
     for game in range(num_games):
@@ -21,13 +23,18 @@ def generate_self_play_data(net, mcts, num_games=50):
         board = Board()
 
         while not board.is_win() and not board.is_full():
-            move = mcts.search(board)
-            print(f"Game {game + 1}/{num_games} - move: {move}")
+            # 以 5% 的概率选择随机走法，而不是 MCTS 最佳走法
+            if random.random() < 0.05:
+                move = board.random_move()
+            else:
+                move = mcts.search(board)
+            print(f"Game {game + 1}/{num_games} - player.{board.current_player} - move: {move}")
             board_state = mcts.board_to_tensor(board)
             game_data.append((board_state, move))
             board.make_move(move)
 
         winner = 0 if board.is_full() else board.current_player
+        print(board.board)
         for board_state, move in game_data:
             value = 1 if winner == 0 else (1 if board_state[2, 0, 0] == (winner == 1) else -1)
             self_play_data.append((board_state, move, value))
@@ -35,7 +42,7 @@ def generate_self_play_data(net, mcts, num_games=50):
     return self_play_data
 
 
-def train_neural_network(net, self_play_data, batch_size=32, learning_rate=0.01, epochs=20):
+def train_neural_network(net, self_play_data, batch_size=32, learning_rate=0.015, epochs=200):
     print(self_play_data)
     optimizer = optim.Adam(net.parameters(), lr=learning_rate)
     loss_fn = nn.MSELoss()
@@ -47,9 +54,9 @@ def train_neural_network(net, self_play_data, batch_size=32, learning_rate=0.01,
             batch = self_play_data[i:i + current_batch_size]
             board_states, moves, values = zip(*batch)
 
-            board_states = torch.from_numpy(np.stack(board_states)).float()
-            moves = torch.tensor([move[0] * 15 + move[1] for _, move, _ in batch]).long()[:current_batch_size]
-            values = torch.tensor(values, dtype=torch.float).unsqueeze(-1)
+            board_states = torch.from_numpy(np.stack(board_states)).float().to(device)
+            moves = torch.tensor([move[0] * 15 + move[1] for _, move, _ in batch]).long().to(device)[:current_batch_size]
+            values = torch.tensor(values, dtype=torch.float).unsqueeze(-1).to(device)
 
             optimizer.zero_grad()
 
@@ -95,8 +102,9 @@ def main():
     else:
         net = NeuralNet()
 
+    net.to(device)
     mcts = MCTS(net)
-    iterations = 20
+    iterations = 200
     for iteration in range(iterations):
         # 显示每次迭代的进度
         print(f"Iteration {iteration + 1}/{iterations}")
